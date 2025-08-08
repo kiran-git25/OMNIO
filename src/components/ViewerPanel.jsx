@@ -1,15 +1,18 @@
 import React from 'react';
-import ReactPlayer from 'react-player';
-import { getViewerComponent } from '../utils/viewerRegistry';
+import PDFViewer from './viewers/PDFViewer';
+import ImageViewer from './viewers/ImageViewer';
+import VideoPlayer from './viewers/VideoPlayer';
+import AudioPlayer from './viewers/AudioPlayer';
+import TextViewer from './viewers/TextViewer';
 
 export default function ViewerPanel({ file }) {
-  const Viewer = getViewerComponent(file);
-  return (
-    <div className="mt-6">
-      <h2 className="text-lg font-semibold">Preview:</h2>
-      <div className="border p-4 rounded bg-white shadow">
-        <Viewer file={file} />
-      </div>
-    </div>
-  );
+  const mime = file.type;
+
+  if (mime.includes('pdf')) return <PDFViewer file={file} />;
+  if (mime.startsWith('image')) return <ImageViewer file={file} />;
+  if (mime.startsWith('video')) return <VideoPlayer file={file} />;
+  if (mime.startsWith('audio')) return <AudioPlayer file={file} />;
+  if (mime.startsWith('text') || mime.includes('json')) return <TextViewer file={file} />;
+
+  return <p>Unsupported file format: {mime}</p>;
 }
