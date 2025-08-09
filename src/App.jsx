@@ -5,12 +5,12 @@ import ChatBox from "./components/ChatBox";
 import "./index.css";
 
 export default function App() {
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFileUrl, setSelectedFileUrl] = useState(null);
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr", height: "100vh" }}>
-      <FileBrowser onFileSelect={setSelectedFile} />
-      <ViewerPanel file={selectedFile} />
+      <FileBrowser onFileSelect={setSelectedFileUrl} />
+      <ViewerPanel fileUrl={selectedFileUrl} />
       <ChatBox />
     </div>
   );
