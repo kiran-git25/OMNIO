@@ -8,16 +8,48 @@ export default function ChatBox() {
   const [privateMode, setPrivateMode] = useState(false);
   const inputRef = useRef();
   const bottomRef = useRef();
+  const channelRef = useRef(null);
 
-  // Save nickname locally so it persists in this browser
+  // Create channel for tab-to-tab communication
+  useEffect(() => {
+    channelRef.current = new BroadcastChannel("omnio-chat");
+    channelRef.current.onmessage = (e) => {
+      if (e.data.type === "new-message") {
+        setMessages((prev) => [...prev, e.data.payload]);
+      }
+      if (e.data.type === "clear-chat") {
+        setMessages([]);
+      }
+      if (e.data.type === "sync-nickname") {
+        setNickname(e.data.payload);
+      }
+    };
+
+    return () => {
+      channelRef.current.close();
+    };
+  }, []);
+
+  // Save nickname locally & broadcast to other tabs
   useEffect(() => {
     localStorage.setItem("nickname", nickname);
+    channelRef.current?.postMessage({ type: "sync-nickname", payload: nickname });
   }, [nickname]);
 
   // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Daily auto-clear
+  useEffect(() => {
+    const lastClear = localStorage.getItem("lastClearDate");
+    const today = new Date().toDateString();
+    if (lastClear !== today) {
+      setMessages([]);
+      localStorage.setItem("lastClearDate", today);
+    }
+  }, []);
 
   const sendMessage = () => {
     const text = inputRef.current.value.trim();
@@ -32,30 +64,31 @@ export default function ChatBox() {
     };
 
     setMessages((prev) => [...prev, newMsg]);
+    channelRef.current?.postMessage({ type: "new-message", payload: newMsg });
     inputRef.current.value = "";
 
-    // Simulate another user replying in group mode
+    // Simulate FriendBot reply only in group mode
     if (!privateMode) {
       setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            sender: "FriendBot",
-            private: false,
-            text: "Got your message! 📬",
-            timestamp: new Date().toLocaleTimeString(),
-          },
-        ]);
+        const botMsg = {
+          id: Date.now() + 1,
+          sender: "FriendBot",
+          private: false,
+          text: "Got your message! 📬",
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        setMessages((prev) => [...prev, botMsg]);
+        channelRef.current?.postMessage({ type: "new-message", payload: botMsg });
       }, 1200);
     }
   };
 
   const clearMessages = () => {
     setMessages([]);
+    channelRef.current?.postMessage({ type: "clear-chat" });
   };
 
-  // YouTube embed detection
+  // Detect YouTube and images
   const renderMessageContent = (msg) => {
     const ytMatch = msg.text.match(
       /(?:https?:\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-]+)/
@@ -77,7 +110,6 @@ export default function ChatBox() {
       );
     }
 
-    // Image URL detection
     if (/\.(jpg|jpeg|png|gif|webp)$/i.test(msg.text)) {
       return (
         <>
@@ -102,7 +134,7 @@ export default function ChatBox() {
     >
       <h3>💬 Chat</h3>
 
-      {/* Nickname input */}
+      {/* Nickname */}
       <div style={{ marginBottom: "0.5rem" }}>
         Nickname:{" "}
         <input
@@ -112,7 +144,7 @@ export default function ChatBox() {
         />
       </div>
 
-      {/* Private mode toggle */}
+      {/* Private mode */}
       <div style={{ marginBottom: "0.5rem" }}>
         <label>
           <input
@@ -124,7 +156,7 @@ export default function ChatBox() {
         </label>
       </div>
 
-      {/* Message area */}
+      {/* Messages */}
       <div
         style={{
           flex: 1,
@@ -153,7 +185,7 @@ export default function ChatBox() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
+      {/* Input */}
       <div style={{ display: "flex", marginTop: "0.5rem" }}>
         <input
           ref={inputRef}
@@ -165,7 +197,7 @@ export default function ChatBox() {
         <button onClick={sendMessage}>Send</button>
       </div>
 
-      {/* Clear chat */}
+      {/* Clear */}
       <button
         onClick={clearMessages}
         style={{ marginTop: "0.5rem", background: "red", color: "white" }}
