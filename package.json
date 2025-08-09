@@ -14,7 +14,8 @@
   "prismjs": "^1.29.0",
   "mammoth": "^1.6.0",
   "xlsx": "^0.18.5",
-  "jszip": "^3.10.1"
+  "jszip": "^3.10.1",
+  "peerjs": "^1.5.2"
   },
   "devDependencies": {
     "vite": "^5.0.0",
