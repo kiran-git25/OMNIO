@@ -12,6 +12,8 @@
   "react-dom": "^18.0.0",
     "react-grid-layout": "^1.3.4",
     "react-player": "^2.16.0",
+    "marked": "^12.0.2",
+"docx-preview": "^0.5.7",
   "uuid": "^9.0.0",
   "prismjs": "^1.29.0",
   "mammoth": "^1.6.0",
