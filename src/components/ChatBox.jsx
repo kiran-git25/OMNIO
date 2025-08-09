@@ -1,73 +1,63 @@
 import React, { useState, useEffect, useRef } from "react";
+import Peer from "peerjs";
 
 export default function ChatBox({ onOpenFile }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [dragOver, setDragOver] = useState(false);
+  const [peerId, setPeerId] = useState("");
+  const [targetPeerId, setTargetPeerId] = useState("");
+  const [conn, setConn] = useState(null);
+  const peerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  const detectMedia = (text) => {
-    const ytMatch = text.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
-    if (ytMatch) return { type: "youtube", id: ytMatch[1] };
-    if (text.match(/\.(jpeg|jpg|gif|png)$/i)) return { type: "image", url: text };
-    if (text.match(/\.(mp3|wav|ogg)$/i)) return { type: "audio", url: text };
-    if (text.match(/\.(mp4|webm|mkv)$/i)) return { type: "video", url: text };
-    if (text.match(/\.(pdf|docx|txt|xlsx)$/i)) return { type: "document", url: text };
-    return null;
+  // Setup PeerJS
+  useEffect(() => {
+    const peer = new Peer();
+    peerRef.current = peer;
+
+    peer.on("open", (id) => {
+      setPeerId(id);
+    });
+
+    peer.on("connection", (connection) => {
+      setConn(connection);
+      connection.on("data", (data) => {
+        receiveMessage(data);
+      });
+    });
+
+    return () => {
+      peer.destroy();
+    };
+  }, []);
+
+  const connectToPeer = () => {
+    if (!targetPeerId.trim()) return;
+    const connection = peerRef.current.connect(targetPeerId);
+    connection.on("open", () => {
+      setConn(connection);
+    });
+    connection.on("data", (data) => {
+      receiveMessage(data);
+    });
   };
 
-  const sendMessage = (customText) => {
-    const messageText = customText || input;
-    if (messageText.trim() === "") return;
+  const receiveMessage = (data) => {
+    setMessages((prev) => [...prev, { ...data, sender: "Peer" }]);
+  };
 
-    const media = detectMedia(messageText);
-    const newMessage = {
+  const sendMessage = () => {
+    if (input.trim() === "") return;
+
+    const message = {
       id: Date.now(),
-      text: messageText,
+      text: input,
       timestamp: new Date().toLocaleTimeString(),
-      sender: "You",
-      media
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, { ...message, sender: "You" }]);
+    conn?.send(message);
     setInput("");
-
-    if (media?.type === "document") {
-      onOpenFile({ name: messageText.split("/").pop(), url: media.url });
-    }
-  };
-
-  const handleFileDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-
-    const fileUrl = URL.createObjectURL(file);
-    const ext = file.name.split(".").pop().toLowerCase();
-
-    let type = null;
-    if (["jpg", "jpeg", "png", "gif"].includes(ext)) type = "image";
-    else if (["mp3", "wav", "ogg"].includes(ext)) type = "audio";
-    else if (["mp4", "webm", "mkv"].includes(ext)) type = "video";
-    else if (["pdf", "docx", "txt", "xlsx"].includes(ext)) type = "document";
-
-    const media = type ? { type, url: fileUrl } : null;
-
-    const newMessage = {
-      id: Date.now(),
-      text: file.name,
-      timestamp: new Date().toLocaleTimeString(),
-      sender: "You",
-      media
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-
-    if (media?.type === "document" || media?.type === "image" || media?.type === "video" || media?.type === "audio") {
-      onOpenFile({ name: file.name, url: fileUrl });
-    }
   };
 
   useEffect(() => {
@@ -75,62 +65,24 @@ export default function ChatBox({ onOpenFile }) {
   }, [messages]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        borderLeft: "1px solid #ccc",
-        background: dragOver ? "#e0f7ff" : "white"
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleFileDrop}
-    >
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", borderLeft: "1px solid #ccc" }}>
+      <div style={{ background: "#f0f0f0", padding: "0.5rem", borderBottom: "1px solid #ccc" }}>
+        <div>Your Peer ID: <strong>{peerId || "Loading..."}</strong></div>
+        <input
+          type="text"
+          placeholder="Enter peer ID to connect..."
+          value={targetPeerId}
+          onChange={(e) => setTargetPeerId(e.target.value)}
+          style={{ marginRight: "0.5rem" }}
+        />
+        <button onClick={connectToPeer}>Connect</button>
+      </div>
+
       <div style={{ flex: 1, overflowY: "auto", padding: "0.5rem" }}>
         {messages.map((msg) => (
           <div key={msg.id} style={{ marginBottom: "0.5rem" }}>
             <strong>{msg.sender}</strong> <small>{msg.timestamp}</small>
             <div style={{ whiteSpace: "pre-wrap" }}>{msg.text}</div>
-
-            {msg.media?.type === "youtube" && (
-              <iframe
-                width="100%"
-                height="200"
-                src={`https://www.youtube.com/embed/${msg.media.id}`}
-                title="YouTube video"
-                allowFullScreen
-                style={{ marginTop: "0.5rem" }}
-              ></iframe>
-            )}
-
-            {msg.media?.type === "image" && (
-              <img src={msg.media.url} alt="Shared" style={{ marginTop: "0.5rem", maxWidth: "100%" }} />
-            )}
-
-            {msg.media?.type === "audio" && (
-              <audio controls style={{ marginTop: "0.5rem", width: "100%" }}>
-                <source src={msg.media.url} />
-              </audio>
-            )}
-
-            {msg.media?.type === "video" && (
-              <video controls style={{ marginTop: "0.5rem", width: "100%" }}>
-                <source src={msg.media.url} />
-              </video>
-            )}
-
-            {msg.media?.type === "document" && (
-              <button
-                style={{ marginTop: "0.5rem" }}
-                onClick={() => onOpenFile({ name: msg.media.url.split("/").pop(), url: msg.media.url })}
-              >
-                Open in Viewer
-              </button>
-            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
@@ -142,10 +94,10 @@ export default function ChatBox({ onOpenFile }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type message or paste link..."
+          placeholder="Type a message..."
           style={{ width: "80%", marginRight: "0.5rem" }}
         />
-        <button onClick={() => sendMessage()}>Send</button>
+        <button onClick={sendMessage} disabled={!conn}>Send</button>
       </div>
     </div>
   );
