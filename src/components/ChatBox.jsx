@@ -6,7 +6,7 @@ export default function ChatBox() {
   const [input, setInput] = useState("");
   const [peerId, setPeerId] = useState("");
   const [targetPeerId, setTargetPeerId] = useState("");
-  const [conn, setConn] = useState(null);
+  const [connections, setConnections] = useState([]);
   const peerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -20,8 +20,7 @@ export default function ChatBox() {
     });
 
     peer.on("connection", (connection) => {
-      setConn(connection);
-      connection.on("data", handleIncomingData);
+      addConnection(connection);
     });
 
     return () => {
@@ -29,17 +28,28 @@ export default function ChatBox() {
     };
   }, []);
 
+  const addConnection = (connection) => {
+    connection.on("data", handleIncomingData);
+    connection.on("close", () => {
+      setConnections((prev) => prev.filter((c) => c !== connection));
+    });
+    setConnections((prev) => [...prev, connection]);
+  };
+
   const connectToPeer = () => {
     if (!targetPeerId.trim()) return;
     const connection = peerRef.current.connect(targetPeerId);
     connection.on("open", () => {
-      setConn(connection);
+      addConnection(connection);
     });
-    connection.on("data", handleIncomingData);
   };
 
   const handleIncomingData = (data) => {
     setMessages((prev) => [...prev, { ...data, sender: "Peer" }]);
+  };
+
+  const sendToAll = (data) => {
+    connections.forEach((c) => c.send(data));
   };
 
   const sendMessage = () => {
@@ -53,7 +63,7 @@ export default function ChatBox() {
     };
 
     setMessages((prev) => [...prev, { ...msgObj, sender: "You" }]);
-    conn?.send(msgObj);
+    sendToAll(msgObj);
     setInput("");
   };
 
@@ -70,7 +80,7 @@ export default function ChatBox() {
       };
 
       setMessages((prev) => [...prev, { ...msgObj, sender: "You" }]);
-      conn?.send(msgObj);
+      sendToAll(msgObj);
     };
     reader.readAsDataURL(file);
   };
@@ -150,7 +160,7 @@ export default function ChatBox() {
           type="file"
           onChange={(e) => e.target.files[0] && sendFile(e.target.files[0])}
         />
-        <button onClick={sendMessage} disabled={!conn}>Send</button>
+        <button onClick={sendMessage} disabled={connections.length === 0}>Send</button>
       </div>
     </div>
   );
