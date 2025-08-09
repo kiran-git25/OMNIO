@@ -1,20 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useEffect, useState } from "react";
+import { marked } from "marked";
 
-export default function MarkdownViewer({ file, url }) {
-  const [md, setMd] = useState('');
+export default function MarkdownViewer({ file }) {
+  const [htmlContent, setHtmlContent] = useState("");
 
   useEffect(() => {
-    if (file && file.text) {
-      file.text().then(setMd);
-    } else if (url) {
-      fetch(url).then(res => res.text()).then(setMd);
+    async function loadMarkdown() {
+      try {
+        let text = "";
+        if (file.content) {
+          text = file.content;
+        } else if (file.url) {
+          const res = await fetch(file.url);
+          text = await res.text();
+        }
+        const html = marked(text);
+        setHtmlContent(html);
+      } catch (err) {
+        console.error("Error loading markdown:", err);
+      }
     }
-  }, [file, url]);
+    loadMarkdown();
+  }, [file]);
 
   return (
-    <div style={{ marginTop: '1rem', padding: '1rem', background: '#fafafa' }}>
-      <ReactMarkdown>{md}</ReactMarkdown>
-    </div>
+    <div
+      style={{
+        padding: "10px",
+        maxHeight: "80vh",
+        overflowY: "auto",
+        background: "#fff",
+      }}
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
   );
 }
