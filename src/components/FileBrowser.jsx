@@ -1,71 +1,52 @@
-import React, { useRef } from "react";
+import React from "react";
 
-export default function FileBrowser({ onFileSelect }) {
-  const urlInputRef = useRef();
-
-  // Handle local file uploads
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const fileUrl = URL.createObjectURL(file);
-    onFileSelect(fileUrl);
+export default function FileBrowser({ onFileOpen }) {
+  const handleFiles = (files) => {
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        onFileOpen(file.name, e.target.result);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
-  // Handle drag & drop
-  const handleDrop = (event) => {
-    event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (!file) return;
-
-    const fileUrl = URL.createObjectURL(file);
-    onFileSelect(fileUrl);
-  };
-
-  const handleDragOver = (event) => {
-    event.preventDefault();
-  };
-
-  // Handle pasted URL
-  const handleUrlSubmit = (e) => {
+  const handleDrop = (e) => {
     e.preventDefault();
-    const url = urlInputRef.current.value.trim();
-    if (!url) return;
-    onFileSelect(url);
-    urlInputRef.current.value = "";
+    handleFiles(e.dataTransfer.files);
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file") {
+        handleFiles([item.getAsFile()]);
+      } else if (item.kind === "string") {
+        item.getAsString(str => {
+          if (str.startsWith("http")) {
+            onFileOpen(str, str); // file name is same as URL for now
+          }
+        });
+      }
+    }
   };
 
   return (
     <div
       style={{
-        borderRight: "1px solid #ccc",
+        border: "2px dashed #aaa",
         padding: "1rem",
-        display: "flex",
-        flexDirection: "column",
-        gap: "1rem",
+        textAlign: "center",
+        marginBottom: "1rem"
       }}
       onDrop={handleDrop}
-      onDragOver={handleDragOver}
+      onDragOver={(e) => e.preventDefault()}
+      onPaste={handlePaste}
     >
-      <h3>📂 File Browser</h3>
-
-      {/* File Picker */}
-      <input type="file" onChange={handleFileChange} />
-
-      {/* Paste URL */}
-      <form onSubmit={handleUrlSubmit}>
-        <input
-          ref={urlInputRef}
-          type="text"
-          placeholder="Paste file or media URL"
-          style={{ width: "100%" }}
-        />
-        <button type="submit">Open</button>
-      </form>
-
-      <div style={{ fontSize: "0.85rem", color: "#666" }}>
-        Drag & drop files here, pick from your device, or paste a URL.
-      </div>
+      <p>📂 Drag & Drop, Paste Link, or Select Files</p>
+      <input type="file" multiple onChange={(e) => handleFiles(e.target.files)} />
     </div>
   );
 }
