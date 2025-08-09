@@ -1,68 +1,78 @@
 import React, { useState, useEffect, useRef } from "react";
 import Peer from "peerjs";
 
+// Temporary signaling server (Open-source)
+const SIGNAL_SERVER = "wss://y-webrtc-signaling.herokuapp.com"; // can use any public or self-hosted
+
 export default function ChatBox() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [peerId, setPeerId] = useState("");
-  const [targetPeerId, setTargetPeerId] = useState("");
+  const [roomName, setRoomName] = useState("default-room");
   const [connections, setConnections] = useState([]);
   const peerRef = useRef(null);
+  const wsRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Setup PeerJS
+  // Setup PeerJS + WS for discovery
   useEffect(() => {
     const peer = new Peer();
     peerRef.current = peer;
 
     peer.on("open", (id) => {
       setPeerId(id);
+
+      // Connect to signaling server
+      wsRef.current = new WebSocket(SIGNAL_SERVER);
+
+      wsRef.current.onopen = () => {
+        wsRef.current.send(JSON.stringify({ type: "join", room: roomName, peerId: id }));
+      };
+
+      wsRef.current.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (data.type === "peers" && Array.isArray(data.peers)) {
+          data.peers
+            .filter((p) => p !== id)
+            .forEach(connectToPeer);
+        }
+      };
     });
 
-    peer.on("connection", (connection) => {
-      addConnection(connection);
-
-      // Send existing messages to the new peer
-      connection.on("open", () => {
-        connection.send({
-          type: "history",
-          data: messages
-        });
+    peer.on("connection", (conn) => {
+      addConnection(conn);
+      conn.on("open", () => {
+        conn.send({ type: "history", data: messages });
       });
     });
 
     return () => {
       peer.destroy();
+      wsRef.current?.close();
     };
-  }, []);
+  }, [roomName]);
 
-  const addConnection = (connection) => {
-    connection.on("data", (data) => handleIncomingData(data, connection));
-    connection.on("close", () => {
-      setConnections((prev) => prev.filter((c) => c !== connection));
-    });
-    setConnections((prev) => [...prev, connection]);
+  const connectToPeer = (id) => {
+    if (connections.some((c) => c.peer === id)) return;
+    const conn = peerRef.current.connect(id);
+    conn.on("open", () => addConnection(conn));
   };
 
-  const connectToPeer = () => {
-    if (!targetPeerId.trim()) return;
-    const connection = peerRef.current.connect(targetPeerId);
-    connection.on("open", () => {
-      addConnection(connection);
-    });
+  const addConnection = (conn) => {
+    conn.on("data", (data) => handleIncomingData(data));
+    conn.on("close", () => setConnections((prev) => prev.filter((c) => c !== conn)));
+    setConnections((prev) => [...prev, conn]);
   };
 
-  const handleIncomingData = (data, connection) => {
+  const handleIncomingData = (data) => {
     if (data.type === "history") {
-      // Merge old history with new
       setMessages((prev) => {
         const merged = [...prev, ...data.data];
-        const unique = Array.from(new Map(merged.map(m => [m.id, m])).values());
+        const unique = Array.from(new Map(merged.map((m) => [m.id, m])).values());
         return unique;
       });
       return;
     }
-
     setMessages((prev) => [...prev, { ...data, sender: "Peer" }]);
   };
 
@@ -72,14 +82,12 @@ export default function ChatBox() {
 
   const sendMessage = () => {
     if (!input.trim()) return;
-
     const msgObj = {
       id: Date.now(),
       type: detectMessageType(input),
       content: input,
       timestamp: new Date().toLocaleTimeString(),
     };
-
     setMessages((prev) => [...prev, { ...msgObj, sender: "You" }]);
     sendToAll(msgObj);
     setInput("");
@@ -96,7 +104,6 @@ export default function ChatBox() {
         fileData: reader.result,
         timestamp: new Date().toLocaleTimeString(),
       };
-
       setMessages((prev) => [...prev, { ...msgObj, sender: "You" }]);
       sendToAll(msgObj);
     };
@@ -147,12 +154,11 @@ export default function ChatBox() {
         <div>Your Peer ID: <strong>{peerId || "Loading..."}</strong></div>
         <input
           type="text"
-          placeholder="Enter peer ID to connect..."
-          value={targetPeerId}
-          onChange={(e) => setTargetPeerId(e.target.value)}
+          placeholder="Room name..."
+          value={roomName}
+          onChange={(e) => setRoomName(e.target.value)}
           style={{ marginRight: "0.5rem" }}
         />
-        <button onClick={connectToPeer}>Connect</button>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0.5rem" }}>
