@@ -21,6 +21,14 @@ export default function ChatBox() {
 
     peer.on("connection", (connection) => {
       addConnection(connection);
+
+      // Send existing messages to the new peer
+      connection.on("open", () => {
+        connection.send({
+          type: "history",
+          data: messages
+        });
+      });
     });
 
     return () => {
@@ -29,7 +37,7 @@ export default function ChatBox() {
   }, []);
 
   const addConnection = (connection) => {
-    connection.on("data", handleIncomingData);
+    connection.on("data", (data) => handleIncomingData(data, connection));
     connection.on("close", () => {
       setConnections((prev) => prev.filter((c) => c !== connection));
     });
@@ -44,7 +52,17 @@ export default function ChatBox() {
     });
   };
 
-  const handleIncomingData = (data) => {
+  const handleIncomingData = (data, connection) => {
+    if (data.type === "history") {
+      // Merge old history with new
+      setMessages((prev) => {
+        const merged = [...prev, ...data.data];
+        const unique = Array.from(new Map(merged.map(m => [m.id, m])).values());
+        return unique;
+      });
+      return;
+    }
+
     setMessages((prev) => [...prev, { ...data, sender: "Peer" }]);
   };
 
