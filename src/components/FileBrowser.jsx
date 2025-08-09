@@ -1,48 +1,71 @@
-import React from "react";
+import React, { useRef } from "react";
 
 export default function FileBrowser({ onFileSelect }) {
-  const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    if (file) onFileSelect(file);
+  const urlInputRef = useRef();
+
+  // Handle local file uploads
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const fileUrl = URL.createObjectURL(file);
+    onFileSelect(fileUrl);
   };
 
-  const handleDrop = (e) => {
+  // Handle drag & drop
+  const handleDrop = (event) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+
+    const fileUrl = URL.createObjectURL(file);
+    onFileSelect(fileUrl);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+  };
+
+  // Handle pasted URL
+  const handleUrlSubmit = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) onFileSelect(file);
-  };
-
-  const handlePaste = async (e) => {
-    const items = e.clipboardData.items;
-    for (const item of items) {
-      if (item.kind === "file") {
-        const file = item.getAsFile();
-        if (file) onFileSelect(file);
-      } else if (item.kind === "string") {
-        item.getAsString(async (url) => {
-          try {
-            const res = await fetch(url);
-            const blob = await res.blob();
-            const filename = url.split("/").pop();
-            const file = new File([blob], filename, { type: blob.type });
-            onFileSelect(file);
-          } catch (err) {
-            console.error("Invalid URL or fetch failed", err);
-          }
-        });
-      }
-    }
+    const url = urlInputRef.current.value.trim();
+    if (!url) return;
+    onFileSelect(url);
+    urlInputRef.current.value = "";
   };
 
   return (
     <div
-      className="file-browser"
-      onDragOver={(e) => e.preventDefault()}
+      style={{
+        borderRight: "1px solid #ccc",
+        padding: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+      }}
       onDrop={handleDrop}
-      onPaste={handlePaste}
+      onDragOver={handleDragOver}
     >
-      <input type="file" onChange={handleFileInput} />
-      <p>Drag & drop, paste, or select a file</p>
+      <h3>📂 File Browser</h3>
+
+      {/* File Picker */}
+      <input type="file" onChange={handleFileChange} />
+
+      {/* Paste URL */}
+      <form onSubmit={handleUrlSubmit}>
+        <input
+          ref={urlInputRef}
+          type="text"
+          placeholder="Paste file or media URL"
+          style={{ width: "100%" }}
+        />
+        <button type="submit">Open</button>
+      </form>
+
+      <div style={{ fontSize: "0.85rem", color: "#666" }}>
+        Drag & drop files here, pick from your device, or paste a URL.
+      </div>
     </div>
   );
 }
