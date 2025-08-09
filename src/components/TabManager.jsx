@@ -1,22 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, forwardRef, useImperativeHandle } from "react";
 import ViewerPanel from "./ViewerPanel";
 
-export default function TabManager() {
+const TabManager = forwardRef((props, ref) => {
   const [tabs, setTabs] = useState([]);
   const [activeTab, setActiveTab] = useState(null);
 
   const openFile = (name, dataUrl) => {
-    // Check if already open
     const existing = tabs.find(t => t.name === name && t.dataUrl === dataUrl);
     if (existing) {
       setActiveTab(existing.id);
       return;
     }
-    const newTab = {
-      id: Date.now(),
-      name,
-      dataUrl
-    };
+    const newTab = { id: Date.now(), name, dataUrl };
     setTabs([...tabs, newTab]);
     setActiveTab(newTab.id);
   };
@@ -30,6 +25,10 @@ export default function TabManager() {
       setActiveTab(null);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    openFile
+  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -81,4 +80,6 @@ export default function TabManager() {
       </div>
     </div>
   );
-}
+});
+
+export default TabManager;
