@@ -61,7 +61,7 @@ export default function ViewerPanel({ file }) {
     lowerName.endsWith(".rar") ||
     lowerName.endsWith(".7z")
   ) {
-    viewer = <p>📦 Archive file preview not implemented yet.</p>;
+    viewer = <ArchiveViewer fileUrl={dataUrl} />;
   } else {
     viewer = (
       <p>
