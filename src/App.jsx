@@ -1,14 +1,30 @@
-import React from "react";
+import React, { useRef } from "react";
 import FileBrowser from "./components/FileBrowser";
 import TabManager from "./components/TabManager";
+import ChatBox from "./components/ChatBox";
 
 export default function App() {
-  let tabManagerRef;
+  const tabManagerRef = useRef();
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <FileBrowser onFileOpen={(name, url) => tabManagerRef.openFile(name, url)} />
-      <TabManager ref={(ref) => (tabManagerRef = ref)} />
+      {/* File Upload / Paste Bar */}
+      <FileBrowser
+        onFileOpen={(name, url) => tabManagerRef.current?.openFile(name, url)}
+      />
+
+      {/* Main split view */}
+      <div style={{ flex: 1, display: "flex" }}>
+        {/* Tabs + Viewers */}
+        <div style={{ flex: 3, display: "flex", flexDirection: "column" }}>
+          <TabManager ref={tabManagerRef} />
+        </div>
+
+        {/* Chat */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <ChatBox />
+        </div>
+      </div>
     </div>
   );
 }
