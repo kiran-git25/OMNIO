@@ -1,0 +1,15 @@
+/* index.css - basic reset and layout */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.layout {
+  height: 100%;
+}
+
+div {
+  box-sizing: border-box;
+}
