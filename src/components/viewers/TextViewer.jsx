@@ -1,40 +1,47 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from "react";
 
-export default function TextViewer({ file, url }) {
-  const [text, setText] = useState('');
-  const [query, setQuery] = useState('');
+export default function TextViewer({ file }) {
+  const [content, setContent] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [highlighted, setHighlighted] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      const content = file ? await file.text() : await fetch(url).then(r => r.text());
-      setText(content);
-    };
-    load();
-  }, [file, url]);
+    if (file.content) {
+      setContent(file.content);
+    } else if (file.url) {
+      fetch(file.url)
+        .then((res) => res.text())
+        .then(setContent)
+        .catch((err) => console.error("Error loading text:", err));
+    }
+  }, [file]);
 
-  const highlighted = text.replace(
-    new RegExp(query, 'gi'),
-    match => `<mark>${match}</mark>`
-  );
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setHighlighted(content);
+    } else {
+      const regex = new RegExp(`(${searchTerm})`, "gi");
+      setHighlighted(content.replace(regex, `<mark>$1</mark>`));
+    }
+  }, [searchTerm, content]);
 
   return (
-    <>
+    <div style={{ padding: "10px" }}>
       <input
         type="text"
-        placeholder="Search text..."
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        style={{ marginBottom: '1rem', padding: '6px', width: '100%' }}
+        placeholder="Search..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        style={{ marginBottom: "10px", width: "100%", padding: "5px" }}
       />
-      <pre
+      <div
         style={{
-          background: '#f9f9f9',
-          padding: '1rem',
-          overflow: 'auto',
-          whiteSpace: 'pre-wrap',
+          whiteSpace: "pre-wrap",
+          maxHeight: "80vh",
+          overflowY: "auto",
         }}
         dangerouslySetInnerHTML={{ __html: highlighted }}
       />
-    </>
+    </div>
   );
 }
