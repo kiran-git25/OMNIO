@@ -14,7 +14,7 @@
     "react-player": "^2.16.0",
     "marked": "^12.0.2",
     "pptx-parser": "^1.1.2",
-"docx-preview": "^0.8.0",
+"docx-preview": "^0.6.5",
   "uuid": "^9.0.0",
   "prismjs": "^1.29.0",
   "mammoth": "^1.6.0",
