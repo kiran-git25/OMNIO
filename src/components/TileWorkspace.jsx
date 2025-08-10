@@ -1,7 +1,7 @@
 import React from 'react';
 import ViewerTile from './ViewerTile';
 
-export default function TileWorkspace({ tiles, onUpdateTile, onCloseTile }) {
+export default function TileWorkspace({ tiles = [], onUpdateTile, onCloseTile }) {
   return (
     <div
       style={{
@@ -13,7 +13,7 @@ export default function TileWorkspace({ tiles, onUpdateTile, onCloseTile }) {
         overflowY: 'auto',
       }}
     >
-      {tiles.map((tile) => (
+      {Array.isArray(tiles) && tiles.map((tile) => (
         <ViewerTile
           key={tile.id}
           tile={tile}
