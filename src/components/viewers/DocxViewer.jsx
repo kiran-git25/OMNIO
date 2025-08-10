@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { DocxPreview } from "docx-preview";
+import DocxPreviewModule from "docx-preview";
+const DocxPreview = DocxPreviewModule.default || DocxPreviewModule;
 
 export default function DocxViewer({ fileUrl }) {
   const containerRef = useRef(null);
