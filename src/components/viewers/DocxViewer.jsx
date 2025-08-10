@@ -1,20 +1,15 @@
-import React, { useEffect, useRef } from "react";
-import DocxPreviewModule from "docx-preview";
-const DocxPreview = DocxPreviewModule.default || DocxPreviewModule;
+import * as docx from "docx-preview";
 
 export default function DocxViewer({ fileUrl }) {
-  const containerRef = useRef(null);
+  const containerRef = React.useRef(null);
 
-  useEffect(() => {
-    if (fileUrl && containerRef.current) {
-      fetch(fileUrl)
-        .then((res) => res.arrayBuffer())
-        .then((buffer) => {
-          const dp = new DocxPreview();
-          dp.renderAsync(buffer, containerRef.current);
-        })
-        .catch((err) => console.error("Error loading DOCX:", err));
-    }
+  React.useEffect(() => {
+    fetch(fileUrl)
+      .then((res) => res.arrayBuffer())
+      .then((buffer) => {
+        const dp = new docx.DocxPreview();
+        dp.renderAsync(buffer, containerRef.current);
+      });
   }, [fileUrl]);
 
   return (
