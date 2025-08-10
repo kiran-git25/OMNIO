@@ -1,4 +1,4 @@
-import DocxPreviewLib from "docx-preview";
+import { DocxPreview } from "docx-preview";
 
 export default function DocxViewer({ fileUrl }) {
   const containerRef = useRef(null);
@@ -7,7 +7,7 @@ export default function DocxViewer({ fileUrl }) {
     fetch(fileUrl)
       .then(res => res.arrayBuffer())
       .then(buffer => {
-        const dp = new DocxPreviewLib(); // now this works
+        const dp = new DocxPreview();
         dp.renderAsync(buffer, containerRef.current);
       });
   }, [fileUrl]);
