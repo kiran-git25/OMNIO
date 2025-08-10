@@ -3,9 +3,12 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  build: {
-    rollupOptions: {
-      external: ['mammoth', 'xlsx', 'fflate'],
-    },
+  optimizeDeps: {
+    include: ['xlsx', 'mammoth', 'fflate']
   },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/]
+    }
+  }
 });
