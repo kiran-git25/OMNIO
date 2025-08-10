@@ -13,12 +13,11 @@ export default function App() {
       <ChatBox onOpenFile={setActiveFile} />
     </div>
   );
-  function App() {
+  function App() 
   return (
     <div className="app-container">
       <TabManager />
     </div>
   );
-}
 }
 export default App;
