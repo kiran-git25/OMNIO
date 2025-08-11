@@ -72,3 +72,11 @@ body {
 button {
   cursor: pointer;
 }
+/* small helper styles */
+.file-item { padding:6px;border-radius:6px;cursor:pointer;border:1px solid transparent }
+.file-item:hover { border-color:var(--color-border) }
+.file-active { background: rgba(255,255,255,0.02) }
+
+.btn { padding:6px 10px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--color-fg) }
+.btn.tiny{ padding:4px 6px;font-size:12px }
+.btn.active{ background:var(--color-accent); color:#fff }
