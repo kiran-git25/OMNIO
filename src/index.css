@@ -1,29 +1,74 @@
-/* index.css - basic reset + layout styles */
+:root {
+  --color-bg-dark: #0b1220;
+  --color-bg-light: #ffffff;
+  --color-fg-dark: #e0e0e0;
+  --color-fg-light: #111111;
+  --color-accent: #4dabf7;
+}
+
+[data-theme="dark"] {
+  --color-bg: var(--color-bg-dark);
+  --color-fg: var(--color-fg-dark);
+}
+
+[data-theme="light"] {
+  --color-bg: var(--color-bg-light);
+  --color-fg: var(--color-fg-light);
+}
+
 html, body, #root {
+  height: 100%;
   margin: 0;
-  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  font-family: system-ui, sans-serif;
+}
+
+.app-root {
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  font-family: Arial, sans-serif;
 }
 
-.layout {
+.main-split {
+  flex: 1;
+}
+
+.split {
+  display: flex;
   height: 100%;
 }
 
-div {
-  box-sizing: border-box;
+.panel {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  padding: 8px;
+  overflow: auto;
 }
 
-.file-browser {
-  padding: 10px;
-  border-right: 1px solid #ccc;
+.panel-inner {
+  padding: 8px;
 }
 
-.viewer-panel {
-  padding: 10px;
+.tab-bar {
+  display: flex;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-accent);
 }
 
-.chat-box {
-  padding: 10px;
-  border-top: 1px solid #ccc;
+.tab {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background-color: var(--color-accent);
+  color: #fff;
+}
+
+button {
+  cursor: pointer;
 }
