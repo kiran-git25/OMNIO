@@ -1,190 +1,133 @@
 import React, { useState, useEffect, useRef } from "react";
-import Peer from "peerjs";
+import ReactPlayer from "react-player";
 
-// Temporary signaling server (Open-source)
-const SIGNAL_SERVER = "wss://y-webrtc-signaling.herokuapp.com"; // can use any public or self-hosted
-
-export default function ChatBox() {
-  const [messages, setMessages] = useState([]);
+/*
+ Props:
+ - rooms: array of room objects { id, name, members, messages:[], streamUrl }
+ - activeRoomId
+ - setActiveRoomId(roomId)
+ - onSendMessage(roomId, message)
+ - onShareStream(roomId, url)
+ - onOpenFile(fileId)  // when clicking an attachment to open in viewer
+*/
+export default function ChatBox({ rooms, activeRoomId, setActiveRoomId, onSendMessage, onShareStream, onOpenFile }) {
+  const [localRooms, setLocalRooms] = useState(rooms || []);
   const [input, setInput] = useState("");
-  const [peerId, setPeerId] = useState("");
-  const [roomName, setRoomName] = useState("default-room");
-  const [connections, setConnections] = useState([]);
-  const peerRef = useRef(null);
-  const wsRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const [selectedRoomId, setSelectedRoomId] = useState(activeRoomId || (rooms && rooms[0]?.id));
+  const fileInputRef = useRef(null);
 
-  // Setup PeerJS + WS for discovery
-  useEffect(() => {
-    const peer = new Peer();
-    peerRef.current = peer;
+  useEffect(()=> setLocalRooms(rooms || []), [rooms]);
+  useEffect(()=> { if (activeRoomId) setSelectedRoomId(activeRoomId); }, [activeRoomId]);
 
-    peer.on("open", (id) => {
-      setPeerId(id);
+  useEffect(()=> {
+    // keep external-selected room in sync up
+    if (typeof setActiveRoomId === "function") setActiveRoomId(selectedRoomId);
+  }, [selectedRoomId]);
 
-      // Connect to signaling server
-      wsRef.current = new WebSocket(SIGNAL_SERVER);
-
-      wsRef.current.onopen = () => {
-        wsRef.current.send(JSON.stringify({ type: "join", room: roomName, peerId: id }));
-      };
-
-      wsRef.current.onmessage = (msg) => {
-        const data = JSON.parse(msg.data);
-        if (data.type === "peers" && Array.isArray(data.peers)) {
-          data.peers
-            .filter((p) => p !== id)
-            .forEach(connectToPeer);
-        }
-      };
-    });
-
-    peer.on("connection", (conn) => {
-      addConnection(conn);
-      conn.on("open", () => {
-        conn.send({ type: "history", data: messages });
-      });
-    });
-
-    return () => {
-      peer.destroy();
-      wsRef.current?.close();
-    };
-  }, [roomName]);
-
-  const connectToPeer = (id) => {
-    if (connections.some((c) => c.peer === id)) return;
-    const conn = peerRef.current.connect(id);
-    conn.on("open", () => addConnection(conn));
-  };
-
-  const addConnection = (conn) => {
-    conn.on("data", (data) => handleIncomingData(data));
-    conn.on("close", () => setConnections((prev) => prev.filter((c) => c !== conn)));
-    setConnections((prev) => [...prev, conn]);
-  };
-
-  const handleIncomingData = (data) => {
-    if (data.type === "history") {
-      setMessages((prev) => {
-        const merged = [...prev, ...data.data];
-        const unique = Array.from(new Map(merged.map((m) => [m.id, m])).values());
-        return unique;
-      });
-      return;
-    }
-    setMessages((prev) => [...prev, { ...data, sender: "Peer" }]);
-  };
-
-  const sendToAll = (data) => {
-    connections.forEach((c) => c.send(data));
-  };
-
-  const sendMessage = () => {
+  const send = () => {
     if (!input.trim()) return;
-    const msgObj = {
-      id: Date.now(),
-      type: detectMessageType(input),
-      content: input,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    setMessages((prev) => [...prev, { ...msgObj, sender: "You" }]);
-    sendToAll(msgObj);
+    const msg = { id: Date.now().toString(), from: "You", type: "text", text: input.trim(), ts: Date.now() };
+    if (onSendMessage) onSendMessage(selectedRoomId, msg);
     setInput("");
   };
 
-  const sendFile = (file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const msgObj = {
-        id: Date.now(),
-        type: "file",
-        fileName: file.name,
-        fileType: file.type,
-        fileData: reader.result,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setMessages((prev) => [...prev, { ...msgObj, sender: "You" }]);
-      sendToAll(msgObj);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const detectMessageType = (text) => {
-    if (text.includes("youtube.com") || text.includes("youtu.be")) return "youtube";
-    return "text";
-  };
-
-  const renderMessage = (msg) => {
-    if (msg.type === "text") {
-      return <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>;
-    }
-    if (msg.type === "youtube") {
-      const videoId = msg.content.split("v=")[1]?.split("&")[0] || msg.content.split("youtu.be/")[1];
-      return (
-        <iframe
-          width="250"
-          height="140"
-          src={`https://www.youtube.com/embed/${videoId}`}
-          frameBorder="0"
-          allowFullScreen
-          title="YouTube Video"
-        ></iframe>
-      );
-    }
-    if (msg.type === "file") {
-      if (msg.fileType.startsWith("image/")) {
-        return <img src={msg.fileData} alt={msg.fileName} style={{ maxWidth: "200px" }} />;
-      }
-      return (
-        <a href={msg.fileData} download={msg.fileName} style={{ color: "blue" }}>
-          {msg.fileName}
-        </a>
-      );
+  const onKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
     }
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const handleFileAttach = (files) => {
+    if (!files || files.length === 0) return;
+    Array.from(files).forEach(file => {
+      const url = URL.createObjectURL(file);
+      const msg = { id: Date.now().toString() + Math.random().toString(36).slice(2,6), from: "You", type: "file", name: file.name, url, ts: Date.now() };
+      if (onSendMessage) onSendMessage(selectedRoomId, msg);
+    });
+  };
+
+  const shareStream = () => {
+    const u = prompt("Paste stream/video URL to share in this room:");
+    if (!u) return;
+    if (onShareStream) onShareStream(selectedRoomId, u);
+  };
+
+  const activeRoom = localRooms.find(r => r.id === selectedRoomId) || localRooms[0] || { messages: [], streamUrl: "" };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", borderLeft: "1px solid #ccc" }}>
-      <div style={{ background: "#f0f0f0", padding: "0.5rem", borderBottom: "1px solid #ccc" }}>
-        <div>Your Peer ID: <strong>{peerId || "Loading..."}</strong></div>
-        <input
-          type="text"
-          placeholder="Room name..."
-          value={roomName}
-          onChange={(e) => setRoomName(e.target.value)}
-          style={{ marginRight: "0.5rem" }}
-        />
+    <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
+      {/* Rooms list */}
+      <div style={{display:'flex',gap:8,alignItems:'center',padding:'6px 0'}}>
+        <div style={{flex:1,display:'flex',gap:6,overflow:'auto'}}>
+          {localRooms.map(r => (
+            <button key={r.id} className={`btn ${r.id===selectedRoomId?'active':''}`} onClick={() => setSelectedRoomId(r.id)}>{r.name}</button>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button className="btn" onClick={()=> {
+            const name = prompt("New room name", "New room");
+            if (!name) return;
+            const id = "r_"+Date.now().toString(36).slice(2,6);
+            const newRoom = { id, name, members: ["You"], messages: [], streamUrl: ""};
+            setLocalRooms(prev => [...prev, newRoom]);
+            setSelectedRoomId(id);
+          }}>+ Room</button>
+          <button className="btn" onClick={shareStream}>Share Stream</button>
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "0.5rem" }}>
-        {messages.map((msg) => (
-          <div key={msg.id} style={{ marginBottom: "0.5rem" }}>
-            <strong>{msg.sender}</strong> <small>{msg.timestamp}</small>
-            <div>{renderMessage(msg)}</div>
+      {/* Stream box (if present) */}
+      { activeRoom && activeRoom.streamUrl ? (
+        <div style={{padding:8,border:'1px solid var(--color-border)',borderRadius:8,marginBottom:8,background:'var(--color-surface)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+            <strong>Shared Stream</strong>
+            <small style={{color:'var(--color-muted)'}}>{activeRoom.streamUrl}</small>
+          </div>
+          <div style={{height:180}}>
+            <ReactPlayer url={activeRoom.streamUrl} controls width="100%" height="100%" />
+          </div>
+        </div>
+      ) : (
+        <div style={{padding:8,marginBottom:8,color:'var(--color-muted)'}}>No shared stream in this room. Click "Share Stream" to paste a URL for everyone.</div>
+      )}
+
+      {/* Messages */}
+      <div style={{flex:1,overflowY:'auto',padding:8,display:'flex',flexDirection:'column',gap:8}}>
+        {(activeRoom.messages || []).map(m => (
+          <div key={m.id} style={{alignSelf: m.from === "You" ? "flex-end" : "flex-start", maxWidth:'85%'}}>
+            <div style={{fontSize:12,color:'var(--color-muted)'}}>{m.from}</div>
+            { m.type === "text" && <div style={{padding:8,background: m.from==="You" ? "var(--color-primary)" : "var(--color-surface)", color: m.from==="You" ? "#fff":"var(--color-fg)", borderRadius:8, marginTop:4}}>{m.text}</div> }
+            { m.type === "file" && (
+              <div style={{padding:8,background:'var(--color-surface)',borderRadius:8,marginTop:4}}>
+                <div>{m.name}</div>
+                <div style={{marginTop:6}}>
+                  { /\.(png|jpg|jpeg|gif|svg)$/i.test(m.name) ? <img src={m.url} alt={m.name} style={{maxWidth:220,maxHeight:160}} /> : (
+                    <div>
+                      <a href={m.url} target="_blank" rel="noreferrer">Open attachment</a>
+                      <button className="btn tiny" onClick={()=>onOpenFile && onOpenFile(m.url)}>Open in viewer</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            { m.type === "stream" && <div style={{padding:8,background:'var(--color-surface)',borderRadius:8,marginTop:4}}>Stream: {m.url}</div> }
           </div>
         ))}
-        <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ padding: "0.5rem", borderTop: "1px solid #ccc", display: "flex", gap: "0.5rem" }}>
-        <input
-          type="text"
+      {/* Input area */}
+      <div style={{display:'flex',gap:8,alignItems:'center',padding:8,borderTop:'1px solid var(--color-border)'}}>
+        <input ref={fileInputRef} type="file" style={{display:'none'}} onChange={(e)=> handleFileAttach(e.target.files)} />
+        <button className="btn" onClick={()=> fileInputRef.current && fileInputRef.current.click()}>Attach</button>
+        <textarea
+          placeholder="Message (Enter send, Shift+Enter newline)"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type message or paste YouTube link..."
-          style={{ flex: 1 }}
+          onChange={(e)=> setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          style={{flex:1,minHeight:44,maxHeight:140,padding:8,borderRadius:8,resize:'none'}}
         />
-        <input
-          type="file"
-          onChange={(e) => e.target.files[0] && sendFile(e.target.files[0])}
-        />
-        <button onClick={sendMessage} disabled={connections.length === 0}>Send</button>
+        <button className="btn" onClick={send}>Send</button>
       </div>
     </div>
   );
