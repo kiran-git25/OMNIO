@@ -1,12 +1,39 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 
-export default function ViewerPanel({ file, onEdit }) {
-  if (!file) return <div style={{ padding: "8px" }}>No file open</div>;
+export default function ViewerPanel({ file, onEdit, onFileDrop }) {
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      onFileDrop(e.dataTransfer.files);
+    }
+  }, [onFileDrop]);
+
+  if (!file) {
+    return (
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        style={{
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: dragOver ? "3px dashed #4CAF50" : "3px dashed #aaa",
+          color: dragOver ? "#4CAF50" : "#aaa"
+        }}
+      >
+        Drag & Drop a file here
+      </div>
+    );
+  }
 
   const ext = file.name.split(".").pop().toLowerCase();
 
-  // Render text/code
   const renderTextEditor = () => (
     <textarea
       style={{
@@ -23,7 +50,6 @@ export default function ViewerPanel({ file, onEdit }) {
     />
   );
 
-  // Decide what to render
   switch (ext) {
     case "txt":
     case "js":
