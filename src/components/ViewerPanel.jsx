@@ -1,79 +1,95 @@
 import React from "react";
-import PDFViewer from "./viewers/PDFViewer";
-import ImageViewer from "./viewers/ImageViewer";
-import VideoPlayer from "./viewers/VideoPlayer";
-import AudioPlayer from "./viewers/AudioPlayer";
-import TextViewer from "./viewers/TextViewer";
-import CodeViewer from "./viewers/CodeViewer";
-import SpreadsheetViewer from "./viewers/SpreadsheetViewer";
-import MarkdownViewer from "./viewers/MarkdownViewer";
-import DocxViewer from "./viewers/DocxViewer";
-import PPTXViewer from "./viewers/PPTXViewer";
+import ReactMarkdown from "react-markdown";
 
-export default function ViewerPanel({ file }) {
-  if (!file) {
-    return (
-      <div style={{ flex: 2, padding: "1rem", background: "#fafafa" }}>
-        <h3>📂 File Viewer</h3>
-        <p>No file selected. Drop or upload a file in chat and click "Open".</p>
-      </div>
-    );
-  }
+export default function ViewerPanel({ file, onEdit }) {
+  if (!file) return <div style={{ padding: "8px" }}>No file open</div>;
 
-  const { name, type, dataUrl } = file;
-  const lowerName = name.toLowerCase();
+  const ext = file.name.split(".").pop().toLowerCase();
 
-  let viewer;
-  if (type === "application/pdf" || lowerName.endsWith(".pdf")) {
-    viewer = <PDFViewer fileUrl={dataUrl} />;
-  } else if (type.startsWith("image/")) {
-    viewer = <ImageViewer fileUrl={dataUrl} />;
-  } else if (type.startsWith("video/") || lowerName.endsWith(".mkv")) {
-    viewer = <VideoPlayer fileUrl={dataUrl} />;
-  } else if (type.startsWith("audio/") || lowerName.endsWith(".mp3")) {
-    viewer = <AudioPlayer fileUrl={dataUrl} />;
-  } else if (
-    lowerName.endsWith(".txt") ||
-    type === "text/plain" ||
-    lowerName.endsWith(".log")
-  ) {
-    viewer = <TextViewer fileUrl={dataUrl} />;
-  } else if (
-    lowerName.endsWith(".js") ||
-    lowerName.endsWith(".py") ||
-    lowerName.endsWith(".java") ||
-    lowerName.endsWith(".c") ||
-    lowerName.endsWith(".cpp") ||
-    lowerName.endsWith(".html") ||
-    lowerName.endsWith(".css")
-  ) {
-    viewer = <CodeViewer fileUrl={dataUrl} language={lowerName.split(".").pop()} />;
-  } else if (lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")) {
-    viewer = <SpreadsheetViewer fileUrl={dataUrl} />;
-  } else if (lowerName.endsWith(".md")) {
-    viewer = <MarkdownViewer fileUrl={dataUrl} />;
-  } else if (lowerName.endsWith(".docx")) {
-    viewer = <DocxViewer fileUrl={dataUrl} />;
-  } else if (lowerName.endsWith(".pptx")) {
-    viewer = <PPTXViewer fileUrl={dataUrl} />;
-  } else if (
-    lowerName.endsWith(".zip") ||
-    lowerName.endsWith(".rar") ||
-    lowerName.endsWith(".7z")
-  ) {
-    viewer = <ArchiveViewer fileUrl={dataUrl} />;
-  } else {
-    viewer = (
-      <p>
-        ❓ Unsupported file type: <strong>{name}</strong>
-      </p>
-    );
-  }
-
-  return (
-    <div style={{ flex: 2, padding: "1rem", background: "#fff", overflow: "auto" }}>
-      <h3>📄 Viewing: {name}</h3>
-      <div style={{ border: "1px solid #ccc", padding: "0.5rem" }}>{viewer}</div>
-    </div>
+  // Render text/code
+  const renderTextEditor = () => (
+    <textarea
+      style={{
+        width: "100%",
+        height: "100%",
+        backgroundColor: "var(--color-bg)",
+        color: "var(--color-fg)",
+        border: "none",
+        fontFamily: "monospace",
+        fontSize: "14px"
+      }}
+      value={file.content}
+      onChange={(e) => onEdit(e.target.value)}
+    />
   );
+
+  // Decide what to render
+  switch (ext) {
+    case "txt":
+    case "js":
+    case "json":
+    case "css":
+    case "html":
+    case "xml":
+      return renderTextEditor();
+
+    case "md":
+      return (
+        <div style={{ padding: "8px", overflowY: "auto", height: "100%" }}>
+          <ReactMarkdown>{file.content}</ReactMarkdown>
+        </div>
+      );
+
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "gif":
+    case "svg":
+      return (
+        <div style={{ textAlign: "center" }}>
+          <img
+            src={file.url}
+            alt={file.name}
+            style={{ maxWidth: "100%", maxHeight: "100%" }}
+          />
+        </div>
+      );
+
+    case "mp3":
+    case "wav":
+      return (
+        <audio controls style={{ width: "100%" }}>
+          <source src={file.url} type={`audio/${ext}`} />
+          Your browser does not support the audio element.
+        </audio>
+      );
+
+    case "mp4":
+    case "webm":
+      return (
+        <video controls style={{ width: "100%", height: "auto" }}>
+          <source src={file.url} type={`video/${ext}`} />
+          Your browser does not support the video element.
+        </video>
+      );
+
+    case "pdf":
+      return (
+        <iframe
+          src={file.url}
+          title={file.name}
+          style={{ width: "100%", height: "100%", border: "none" }}
+        />
+      );
+
+    default:
+      return (
+        <div style={{ padding: "8px" }}>
+          <p>Cannot preview this file type: <strong>.{ext}</strong></p>
+          <a href={file.url} download>
+            Download file
+          </a>
+        </div>
+      );
+  }
 }
