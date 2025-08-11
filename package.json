@@ -1,29 +1,18 @@
 {
-  "name": "omnio",
+  "name": "omnio-crossplatform",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
     "build": "vite build",
+    "dev": "vite",
     "preview": "vite preview"
   },
   "dependencies": {
-     "react": "^18.0.0",
-  "react-dom": "^18.0.0",
-    "react-grid-layout": "^1.3.4",
-    "react-player": "^2.16.0",
-    "marked": "^12.0.2",
-    "pptx-parser": "^1.1.2",
-"docx-preview": "^0.3.6",
-  "uuid": "^9.0.0",
-     "simple-peer": "^9.11.1",
-    "react-use": "^17.4.0",
-  "prismjs": "^1.29.0",
-  "mammoth": "^1.6.0",
-  "xlsx": "^0.18.5",
-  "jszip": "^3.10.1",
-  "peerjs": "^1.5.2",
-    "react-pdf": "^7.7.1"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-split": "^2.0.0",
+    "lucide-react": "^0.268.0"
   },
   "devDependencies": {
     "vite": "^5.0.0",
