@@ -1,40 +1,19 @@
-import React, { useState } from 'react';
-import TileWorkspace from './TileWorkspace';
-import CommunicationHub from './CommunicationHub';
+import React from "react";
 
-const TabManager = () => {
-  const [activeTab, setActiveTab] = useState('files');
-
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'files':
-        return <TileWorkspace />;
-      case 'communication':
-        return <CommunicationHub />;
-      default:
-        return null;
-    }
-  };
-
+export default function TabManager({ tabs, activeId, setActiveId, onClose, onAdd }) {
   return (
-    <div className="tab-manager">
-      <div className="tab-header">
-        <button
-          className={activeTab === 'files' ? 'active' : ''}
-          onClick={() => setActiveTab('files')}
+    <div className="tab-bar">
+      {tabs.map((t) => (
+        <div
+          key={t.id}
+          className={`tab ${t.id === activeId ? "active" : ""}`}
+          onClick={() => setActiveId(t.id)}
         >
-          Files
-        </button>
-        <button
-          className={activeTab === 'communication' ? 'active' : ''}
-          onClick={() => setActiveTab('communication')}
-        >
-          Communication
-        </button>
-      </div>
-      <div className="tab-content">{renderTab()}</div>
+          {t.name}
+          <button onClick={(e) => { e.stopPropagation(); onClose(t.id); }} style={{ marginLeft: 4 }}>x</button>
+        </div>
+      ))}
+      <button onClick={onAdd} style={{ marginLeft: "auto" }}>+</button>
     </div>
   );
-};
-
-export default TabManager;
+}
