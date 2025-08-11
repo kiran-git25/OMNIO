@@ -1,120 +1,85 @@
-import React, { useState, useCallback } from "react";
+import React from "react";
 import ReactMarkdown from "react-markdown";
 
-export default function ViewerPanel({ file, onEdit, onFileDrop }) {
-  const [dragOver, setDragOver] = useState(false);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      onFileDrop(e.dataTransfer.files);
-    }
-  }, [onFileDrop]);
-
+/*
+Props:
+ - file: { id, name, url, content, type }
+ - onEdit(content)
+ - onFileDrop(fileList)
+ - onOpenUrl(url)
+*/
+export default function ViewerPanel({ file, onEdit, onFileDrop, onOpenUrl }) {
   if (!file) {
     return (
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        style={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: dragOver ? "3px dashed #4CAF50" : "3px dashed #aaa",
-          color: dragOver ? "#4CAF50" : "#aaa"
-        }}
-      >
-        Drag & Drop a file here
+      <div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:8,color:'var(--color-muted)'}}>
+        <div style={{fontSize:18,fontWeight:600}}>No file selected</div>
+        <div>Drag & drop a file here or click 'Open' from the Files list.</div>
+        <div style={{marginTop:12}}>
+          <input type="text" placeholder="Open remote URL (image / pdf / mp4)..." style={{padding:8,width:360}} onKeyDown={(e)=>{ if(e.key==='Enter') onOpenUrl && onOpenUrl(e.target.value); }} />
+        </div>
       </div>
     );
   }
 
-  const ext = file.name.split(".").pop().toLowerCase();
+  const ext = (file.name || "").split(".").pop().toLowerCase();
 
   const renderTextEditor = () => (
     <textarea
-      style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor: "var(--color-bg)",
-        color: "var(--color-fg)",
-        border: "none",
-        fontFamily: "monospace",
-        fontSize: "14px"
-      }}
-      value={file.content}
-      onChange={(e) => onEdit(e.target.value)}
+      value={file.content || ""}
+      onChange={(e)=> onEdit && onEdit(e.target.value)}
+      style={{width:'100%',height:'100%',resize:'none',border:'none',background:'transparent',color:'var(--color-fg)',fontFamily:'monospace',padding:12}}
     />
   );
 
   switch (ext) {
-    case "txt":
-    case "js":
-    case "json":
-    case "css":
-    case "html":
-    case "xml":
+    case "txt": case "js": case "json": case "css": case "html": case "xml":
       return renderTextEditor();
 
     case "md":
       return (
-        <div style={{ padding: "8px", overflowY: "auto", height: "100%" }}>
-          <ReactMarkdown>{file.content}</ReactMarkdown>
+        <div style={{padding:12,overflow:'auto',height:'100%'}}>
+          <ReactMarkdown>{file.content || ""}</ReactMarkdown>
         </div>
       );
 
-    case "png":
-    case "jpg":
-    case "jpeg":
-    case "gif":
-    case "svg":
+    case "png": case "jpg": case "jpeg": case "gif": case "svg":
       return (
-        <div style={{ textAlign: "center" }}>
-          <img
-            src={file.url}
-            alt={file.name}
-            style={{ maxWidth: "100%", maxHeight: "100%" }}
-          />
+        <div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <img src={file.url} alt={file.name} style={{maxWidth:'100%',maxHeight:'100%'}} />
         </div>
       );
 
-    case "mp3":
-    case "wav":
+    case "mp3": case "wav":
       return (
-        <audio controls style={{ width: "100%" }}>
-          <source src={file.url} type={`audio/${ext}`} />
-          Your browser does not support the audio element.
-        </audio>
+        <div style={{padding:8}}>
+          <audio controls style={{width:'100%'}}>
+            <source src={file.url} />
+            Your browser does not support audio playback.
+          </audio>
+        </div>
       );
 
-    case "mp4":
-    case "webm":
+    case "mp4": case "webm":
       return (
-        <video controls style={{ width: "100%", height: "auto" }}>
-          <source src={file.url} type={`video/${ext}`} />
-          Your browser does not support the video element.
-        </video>
+        <div style={{height:'100%'}}>
+          <video controls style={{width:'100%',height:'100%'}}>
+            <source src={file.url} />
+            Your browser does not support video playback.
+          </video>
+        </div>
       );
 
     case "pdf":
-      return (
-        <iframe
-          src={file.url}
-          title={file.name}
-          style={{ width: "100%", height: "100%", border: "none" }}
-        />
-      );
+      // iframe works for most pdfs
+      return <iframe src={file.url} title={file.name} style={{width:'100%',height:'100%',border:'none'}} />;
 
     default:
+      // fallback: if file.content exists, show text
+      if (file.content) return renderTextEditor();
       return (
-        <div style={{ padding: "8px" }}>
-          <p>Cannot preview this file type: <strong>.{ext}</strong></p>
-          <a href={file.url} download>
-            Download file
-          </a>
+        <div style={{padding:12}}>
+          <p>Preview not available for <strong>{file.name}</strong></p>
+          <a href={file.url} download>Download file</a>
         </div>
       );
   }
